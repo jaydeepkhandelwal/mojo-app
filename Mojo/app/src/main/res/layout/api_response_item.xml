@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+
+    >
+
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/car_provider"
+        android:textStyle="bold"
+        android:paddingTop="6dip"
+        android:paddingBottom="6dip"
+        android:textSize="16sp"
+        style="@style/Base.TextAppearance.AppCompat.Title"
+
+
+
+
+        />
+    <TextView
+
+        android:layout_width="wrap_content"
+        android:layout_weight="1"
+        android:layout_height="wrap_content"
+        android:id="@+id/car_category"
+        android:textSize="16sp"
+        android:paddingTop="3dip"
+        android:paddingBottom="3dip"
+
+        />
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:gravity="end"
+        android:id="@+id/eta"
+        android:textSize="14sp"
+
+        />
+</LinearLayout>
