@@ -35,20 +35,35 @@ public class APIResponseAdapter extends ArrayAdapter<APIResponseData> {
         }
         TextView carCategoryText = (TextView) view.findViewById(R.id.car_category);
         TextView etaText = (TextView) view.findViewById(R.id.eta);
+        TextView estimateText = (TextView) view.findViewById(R.id.estimate);
         TextView carCategoryTypeText = (TextView)view.findViewById(R.id.car_provider);
         if(APIResponseDataList.get(position).getCarProvider() != null) {
 
             carCategoryTypeText.setText(APIResponseDataList.get(position).getCarProvider());
             carCategoryTypeText.setVisibility(View.VISIBLE);
             etaText.setVisibility(View.GONE);
+            estimateText.setVisibility(View.GONE);
             carCategoryText.setVisibility(View.GONE);
         }
         else {
 
 
-            carCategoryText.setText(APIResponseDataList.get(position).getEtaData().getCarCategory());
+            EtaData etaData = APIResponseDataList.get(position).getEtaData();
+            PriceData priceData = APIResponseDataList.get(position).getPriceData();
 
-            etaText.setText(APIResponseDataList.get(position).getEtaData().getEta() + " mins");
+            if(etaData != null) {
+                carCategoryText.setText(etaData.getCarCategory());
+
+                etaText.setText(etaData.getEta() + " mins");
+            }
+            if(priceData != null) {
+                String estimate = priceData.getLowEstimate() + " - " + priceData.getHighEstimate();
+                estimateText.setText(estimate + " Rs");
+                estimateText.setVisibility(View.VISIBLE);
+            }
+            else
+                estimateText.setVisibility(View.GONE);
+
             carCategoryTypeText.setVisibility(View.GONE);
             etaText.setVisibility(View.VISIBLE);
             carCategoryText.setVisibility(View.VISIBLE);
@@ -60,6 +75,15 @@ public class APIResponseAdapter extends ArrayAdapter<APIResponseData> {
     class APIResponseData{
         private String carProvider;
         private  EtaData etaData;
+        private  PriceData priceData;
+
+        public PriceData getPriceData() {
+            return priceData;
+        }
+
+        public void setPriceData(PriceData priceData) {
+            this.priceData = priceData;
+        }
 
         public String getCarProvider() {
             return carProvider;
@@ -172,5 +196,110 @@ public class APIResponseAdapter extends ArrayAdapter<APIResponseData> {
             this.eta = eta;
         }
 
+    }
+
+    class PriceResponse {
+        private PriceDataList ola;
+        private PriceDataList tfs;
+        private PriceDataList uber;
+        private Boolean status;
+
+        public PriceDataList getOla() {
+            return ola;
+        }
+
+        public void setOla(PriceDataList ola) {
+            this.ola = ola;
+        }
+
+        public PriceDataList getTfs() {
+            return tfs;
+        }
+
+        public void setTfs(PriceDataList tfs) {
+            this.tfs = tfs;
+        }
+
+        public PriceDataList getUber() {
+            return uber;
+        }
+
+        public void setUber(PriceDataList uber) {
+            this.uber = uber;
+        }
+
+        public Boolean getStatus() {
+            return status;
+        }
+
+        public void setStatus(Boolean status) {
+            this.status = status;
+        }
+    }
+    class PriceDataList{
+        private List<PriceData> dataList;
+        Boolean status;
+
+        @JsonProperty("data")
+        public List<PriceData> getDataList() {
+            return dataList;
+        }
+
+        @JsonProperty("data")
+        public void setDataList(List<PriceData> dataList) {
+            this.dataList = dataList;
+        }
+
+        public Boolean getStatus() {
+            return status;
+        }
+
+        public void setStatus(Boolean status) {
+            this.status = status;
+        }
+    }
+    class PriceData {
+        private String carCategory;
+        private Integer estimate;
+        private Integer highEstimate;
+        private  Integer lowEstimate;
+
+        @JsonProperty("high_estimate")
+        public Integer getHighEstimate() {
+            return highEstimate;
+        }
+
+        @JsonProperty("high_estimate")
+        public void setHighEstimate(Integer highEstimate) {
+            this.highEstimate = highEstimate;
+        }
+
+        @JsonProperty("low_estimate")
+        public Integer getLowEstimate() {
+            return lowEstimate;
+        }
+
+        @JsonProperty("low_estimate")
+        public void setLowEstimate(Integer lowEstimate) {
+            this.lowEstimate = lowEstimate;
+        }
+
+        @JsonProperty("car_category")
+        public String getCarCategory() {
+            return carCategory;
+        }
+
+        @JsonProperty("car_category")
+        public void setCarCategory(String carCategory) {
+            this.carCategory = carCategory;
+        }
+
+        public Integer getEstimate() {
+            return estimate;
+        }
+
+        public void setEstimate(Integer estimate) {
+            this.estimate = estimate;
+        }
     }
 

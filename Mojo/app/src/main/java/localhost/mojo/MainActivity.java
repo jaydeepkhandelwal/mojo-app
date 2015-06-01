@@ -1,10 +1,9 @@
 package localhost.mojo;
 
+import android.app.ProgressDialog;
 import android.os.AsyncTask;
-import android.support.v4.app.FragmentActivity;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
-import android.text.Html;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -12,9 +11,10 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.AutoCompleteTextView;
 import android.widget.ListView;
-import android.widget.TextView;
 import android.widget.Toast;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -29,23 +29,36 @@ import com.google.android.gms.maps.model.LatLngBounds;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 
 public class MainActivity extends ActionBarActivity implements GoogleApiClient.OnConnectionFailedListener {
 
     private final static String etaURL = "https://fierce-refuge-4051.herokuapp.com/eta";
+    private final static String priceURL = "https://fierce-refuge-4051.herokuapp.com/price";
     protected GoogleApiClient mGoogleApiClient;
-    private  PlaceAutoCompleteAdapter mPlaceAutoCompleteAdaper;
+    private  PlaceAutoCompleteAdapter mPlaceAutoCompleteAdaperFrom;
+    private  PlaceAutoCompleteAdapter mPlaceAutoCompleteAdaperTo;
+
     private AutoCompleteTextView mAutoCompleteTextView;
-    private APIResponseAdapter mApiResponseAdapter;
-    private  String TAG = "MainActivity";
+
+    private APIResponseAdapter mAPIResponseAdapter;
+    private String TAG = "MainActivity";
     private static final LatLngBounds BOUNDS_INDIA = new LatLngBounds(
             new LatLng(8.0689, 77.5523), new LatLng(33.24902, 76.82704) );
 
     private  List<APIResponseData> mAPIResponseDataList  = new ArrayList<APIResponseData>();
     private  ListView mAPIResponseListView;
+    private String fromPlaceLat = null;
+    private String  fromPlaceLng = null;
+    private  String toPlaceLat = null;
+    private String toPlaceLng = null;
 
+    private enum RESPONSE_TYPE {
+        ETA,
+        PRICE
+    }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -60,13 +73,24 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.O
         // Retrieve the AutoCompleteTextView that will display Place suggestions.
         mAutoCompleteTextView = (AutoCompleteTextView)
                 findViewById(R.id.from_location);
-        mPlaceAutoCompleteAdaper = new PlaceAutoCompleteAdapter(this, android.R.layout.simple_list_item_1,mGoogleApiClient,BOUNDS_INDIA,null);
-        mAutoCompleteTextView.setAdapter(mPlaceAutoCompleteAdaper);
+        mPlaceAutoCompleteAdaperFrom = new PlaceAutoCompleteAdapter(this, android.R.layout.simple_list_item_1,mGoogleApiClient,BOUNDS_INDIA,1,null);
+        mAutoCompleteTextView.setAdapter(mPlaceAutoCompleteAdaperFrom);
+        mAutoCompleteTextView.setOnItemClickListener(mAutocompleteClickListener);
+
+        mAutoCompleteTextView = (AutoCompleteTextView)
+                findViewById(R.id.to_location);
+        mPlaceAutoCompleteAdaperTo = new PlaceAutoCompleteAdapter(this, android.R.layout.simple_list_item_1,mGoogleApiClient,BOUNDS_INDIA,2,null);
+
+        mAutoCompleteTextView.setAdapter(mPlaceAutoCompleteAdaperTo);
+
         // Register a listener that receives callbacks when a suggestion has been selected
         mAutoCompleteTextView.setOnItemClickListener(mAutocompleteClickListener);
+
+
         mAPIResponseListView = (ListView) findViewById(R.id.api_response);
-        mApiResponseAdapter = new APIResponseAdapter(this, R.layout.api_response_item,mAPIResponseDataList);
-        mAPIResponseListView.setAdapter(mApiResponseAdapter);
+        mAPIResponseAdapter = new APIResponseAdapter(this, R.layout.api_response_item,mAPIResponseDataList);
+        mAPIResponseListView.setAdapter(mAPIResponseAdapter);
+
 
     }
 
@@ -88,7 +112,10 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.O
              The adapter stores each Place suggestion in a PlaceAutocomplete object from which we
              read the place ID.
               */
-            final PlaceAutoCompleteAdapter.PlaceAutocomplete item = mPlaceAutoCompleteAdaper.getItem(position);
+            PlaceAutoCompleteAdapter  placeAutoCompleteAdapter = (PlaceAutoCompleteAdapter)parent.getAdapter();
+
+            final PlaceAutoCompleteAdapter.PlaceAutocomplete item = placeAutoCompleteAdapter.getItem(position);
+            final Integer locationType = placeAutoCompleteAdapter.getLocationType();
             final String placeId = String.valueOf(item.placeId);
             Log.i(TAG, "Autocomplete item selected: " + item.description);
 
@@ -97,13 +124,25 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.O
              Issue a request to the Places Geo Data API to retrieve a Place object with additional
               details about the place.
               */
-            PendingResult<PlaceBuffer> placeResult = Places.GeoDataApi
-                    .getPlaceById(mGoogleApiClient, placeId);
-            placeResult.setResultCallback(mUpdatePlaceDetailsCallback);
+
+            if(locationType == 1) {
+                PendingResult<PlaceBuffer> placeResult = Places.GeoDataApi
+                        .getPlaceById(mGoogleApiClient, placeId);
+                placeResult.setResultCallback(mFromLocationCallback);
 
 //            Toast.makeText(getApplicationContext(), "Clicked: " + item.description,
 //                    Toast.LENGTH_SHORT).show();
-            Log.i(TAG, "Called getPlaceById to get Place details for " + item.placeId);
+                Log.i(TAG, "Called getPlaceById to get Place details for " + item.placeId);
+            }
+           else {
+                PendingResult<PlaceBuffer> placeResult = Places.GeoDataApi
+                        .getPlaceById(mGoogleApiClient, placeId);
+                placeResult.setResultCallback(mToLocationCallback);
+
+//            Toast.makeText(getApplicationContext(), "Clicked: " + item.description,
+//                    Toast.LENGTH_SHORT).show();
+                Log.i(TAG, "Called getPlaceById to get Place details for " + item.placeId);
+            }
         }
     };
 
@@ -111,7 +150,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.O
      * Callback for results from a Places Geo Data API query that shows the first place result in
      * the details view on screen.
      */
-    private ResultCallback<PlaceBuffer> mUpdatePlaceDetailsCallback
+    private ResultCallback<PlaceBuffer> mFromLocationCallback
             = new ResultCallback<PlaceBuffer>() {
         @Override
         public void onResult(PlaceBuffer places) {
@@ -124,15 +163,72 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.O
             // Get the Place object from the buffer.
             final Place place = places.get(0);
 
-            String placeLat = Double.toString(place.getLatLng().latitude);
-            String placeLng =  Double.toString(place.getLatLng().longitude);
+           fromPlaceLat = Double.toString(place.getLatLng().latitude);
+           fromPlaceLng =  Double.toString(place.getLatLng().longitude);
+            Request etaRequest = null;
+            Request priceRequest = null;
+            etaRequest = new Request();
+            etaRequest.setUrl(etaURL);
+            etaRequest.addParams("start_latitude", fromPlaceLat);
+            etaRequest.addParams("start_longitude", fromPlaceLng);
+            if(toPlaceLat != null && toPlaceLng != null) {
+                priceRequest = new Request();
+                priceRequest.setUrl(priceURL);
+                priceRequest.addParams("start_latitude", fromPlaceLat);
+                priceRequest.addParams("start_longitude", fromPlaceLng);
+                priceRequest.addParams("end_latitude", toPlaceLat);
+                priceRequest.addParams("end_longitude", toPlaceLng);
 
-            Request request = new Request();
-            request.setUrl(etaURL);
-            request.addParams("start_latitude", placeLat);
-            request.addParams("start_longitude", placeLng);
 
-            new HttpAsyncTask().execute(request);
+
+            }
+
+
+
+
+            new HttpAsyncTask().execute(etaRequest,priceRequest);
+
+            Log.i(TAG, "Place details received: " + place.getName());
+
+            places.release();
+        }
+
+
+    };
+    private ResultCallback<PlaceBuffer> mToLocationCallback
+            = new ResultCallback<PlaceBuffer>() {
+        @Override
+        public void onResult(PlaceBuffer places) {
+            if (!places.getStatus().isSuccess()) {
+                // Request did not complete successfully
+                Log.e(TAG, "Place query did not complete. Error: " + places.getStatus().toString());
+                places.release();
+                return;
+            }
+            // Get the Place object from the buffer.
+            final Place place = places.get(0);
+
+            toPlaceLat = Double.toString(place.getLatLng().latitude);
+            toPlaceLng =  Double.toString(place.getLatLng().longitude);
+
+            if(fromPlaceLat != null && fromPlaceLng != null) {
+                Request etaRequest = null;
+                Request priceRequest = null;
+                etaRequest = new Request();
+                etaRequest.setUrl(etaURL);
+                etaRequest.addParams("start_latitude", fromPlaceLat);
+                etaRequest.addParams("start_longitude", fromPlaceLng);
+
+                priceRequest = new Request();
+                priceRequest.setUrl(priceURL);
+                priceRequest.addParams("start_latitude", fromPlaceLat);
+                priceRequest.addParams("start_longitude", fromPlaceLng);
+                priceRequest.addParams("end_latitude", toPlaceLat);
+                priceRequest.addParams("end_longitude", toPlaceLng);
+
+
+                new HttpAsyncTask().execute(etaRequest,priceRequest);
+            }
 
             Log.i(TAG, "Place details received: " + place.getName());
 
@@ -183,23 +279,63 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.O
                 "Could not connect to Google API Client: Error " + connectionResult.getErrorCode(),
                 Toast.LENGTH_SHORT).show();
     }
-    private class HttpAsyncTask extends AsyncTask<Request, Void, String> {
+
+    private class HttpAsyncTask extends AsyncTask<Request, Void, HashMap<RESPONSE_TYPE,String>> {
         @Override
-        protected String doInBackground(Request... requests) {
+        protected HashMap<RESPONSE_TYPE,String> doInBackground(Request... requests) {
 
+//           mAPIResponseListView.
             ServiceHandler serviceHandler = new ServiceHandler();
-            Request request = requests[0];
-            return serviceHandler.makeServiceCall(request.getUrl(), 1, request.getRequestParams());
+            Request etaRequest = requests[0];
+            Request priceRequest = requests[1];
+            HashMap<RESPONSE_TYPE, String> responseMap = new HashMap<RESPONSE_TYPE, String>();
+            responseMap.put(RESPONSE_TYPE.ETA, null);
+            responseMap.put(RESPONSE_TYPE.PRICE, null);
+            if(etaRequest != null) {
+                String result = serviceHandler.makeServiceCall(etaRequest.getUrl(), 1, etaRequest.getRequestParams());
+                responseMap.put(RESPONSE_TYPE.ETA, result);
 
+            }
+            if(priceRequest != null) {
+                String result = serviceHandler.makeServiceCall(priceRequest.getUrl(), 1, priceRequest.getRequestParams());
+                responseMap.put(RESPONSE_TYPE.PRICE, result);
+            }
+
+        return responseMap;
+
+
+        }
+
+        ProgressDialog dialog;
+        @Override
+        protected void onPreExecute() {
+            dialog = new ProgressDialog(MainActivity.this,1);
+            dialog.setMessage("Loading....");
+            dialog.setIndeterminate(true);
+            dialog.setCancelable(false);
+            dialog.show();
         }
         // onPostExecute displays the results of the AsyncTask.
         @Override
-        protected void onPostExecute(String result) {
+        protected void onPostExecute(HashMap<RESPONSE_TYPE,String> responseMap) {
+            dialog.dismiss();
+            String etaResponseStr = responseMap.get(RESPONSE_TYPE.ETA);
+            String priceResponseStr = responseMap.get(RESPONSE_TYPE.PRICE);
             ObjectMapper mapper = new ObjectMapper();
+            mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
             EtaResponse etaResponse = null;
+            PriceResponse priceResponse = null;
+
             try {
-                System.out.println(result);
-                etaResponse = mapper.readValue(result, EtaResponse.class);
+                System.out.println(etaResponseStr);
+                if(etaResponseStr != null) {
+                    etaResponse = mapper.readValue(etaResponseStr, EtaResponse.class);
+                }
+                if(priceResponseStr != null) {
+                    priceResponse = mapper.readValue(priceResponseStr, PriceResponse.class);
+                }
+
+
             } catch (IOException e) {
                 e.printStackTrace();
                 return;
@@ -207,22 +343,37 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.O
 
             MainActivity.this.mAPIResponseDataList.clear();
             APIResponseData headerData = null;
-            List<EtaData> dataList;
+            List<EtaData> etaDataList = null;
+            List<PriceData> priceDataList = null;
             List<APIResponseData> APIResponseDataList;
             APIResponseData apiResponseData;
-
+            String carCategory = null;
             if(etaResponse.getOla().getDataList().size() != 0) {
                 headerData = new APIResponseData();
                 headerData.setCarProvider("Ola");
                 headerData.setEtaData(null);
                 MainActivity.this.mAPIResponseDataList.add(headerData);
 
-                dataList = etaResponse.getOla().getDataList();
+                etaDataList = etaResponse.getOla().getDataList();
+
                 APIResponseDataList = new ArrayList<APIResponseData>();
-                for (EtaData temp : dataList) {
+                if(priceResponse != null) {
+                    priceDataList = priceResponse.getOla().getDataList();
+                }
+                for (EtaData temp : etaDataList) {
                     apiResponseData = new APIResponseData();
                     apiResponseData.setEtaData(temp);
+                    if(priceDataList != null) {
+                    for(PriceData tempPriceData : priceDataList) {
+                        if (tempPriceData.getCarCategory().equalsIgnoreCase(temp.getCarCategory())) {
+                            apiResponseData.setPriceData(tempPriceData);
+                            break;
+                        }
+                    }
+                    }
                     APIResponseDataList.add(apiResponseData);
+
+                    
                 }
                 MainActivity.this.mAPIResponseDataList.addAll(APIResponseDataList);
             }
@@ -232,12 +383,25 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.O
                 headerData.setEtaData(null);
                 MainActivity.this.mAPIResponseDataList.add(headerData);
 
-                dataList = etaResponse.getUber().getDataList();
+                etaDataList = etaResponse.getUber().getDataList();
                 APIResponseDataList = new ArrayList<APIResponseData>();
-                for (EtaData temp : dataList) {
+                if(priceResponse != null) {
+                    priceDataList = priceResponse.getUber().getDataList();
+                }
+                for (EtaData temp : etaDataList) {
                     apiResponseData = new APIResponseData();
                     apiResponseData.setEtaData(temp);
+                    if(priceDataList != null) {
+                        for(PriceData tempPriceData : priceDataList) {
+                            if (tempPriceData.getCarCategory().equalsIgnoreCase(temp.getCarCategory())) {
+                                apiResponseData.setPriceData(tempPriceData);
+                                break;
+                            }
+                        }
+                    }
                     APIResponseDataList.add(apiResponseData);
+
+
                 }
                 MainActivity.this.mAPIResponseDataList.addAll(APIResponseDataList);
             }
@@ -248,16 +412,29 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.O
                 headerData.setEtaData(null);
                 MainActivity.this.mAPIResponseDataList.add(headerData);
 
-                dataList = etaResponse.getTfs().getDataList();
+                etaDataList = etaResponse.getTfs().getDataList();
                 APIResponseDataList = new ArrayList<APIResponseData>();
-                for (EtaData temp : dataList) {
+                if(priceResponse != null) {
+                    priceDataList = priceResponse.getTfs().getDataList();
+                }
+                for (EtaData temp : etaDataList) {
                     apiResponseData = new APIResponseData();
                     apiResponseData.setEtaData(temp);
+                    if(priceDataList != null) {
+                        for(PriceData tempPriceData : priceDataList) {
+                            if (tempPriceData.getCarCategory().equalsIgnoreCase(temp.getCarCategory())) {
+                                apiResponseData.setPriceData(tempPriceData);
+                                break;
+                            }
+                        }
+                    }
                     APIResponseDataList.add(apiResponseData);
+
+
                 }
                 MainActivity.this.mAPIResponseDataList.addAll(APIResponseDataList);
             }
-            mApiResponseAdapter.notifyDataSetChanged();
+            mAPIResponseAdapter.notifyDataSetChanged();
 
 
         }
