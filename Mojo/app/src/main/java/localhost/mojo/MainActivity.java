@@ -1,19 +1,33 @@
 package localhost.mojo;
 
 import android.app.ProgressDialog;
+
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.ColorFilter;
+import android.graphics.LightingColorFilter;
+import android.graphics.drawable.Drawable;
+import android.location.Address;
+import android.location.Geocoder;
+import android.location.Location;
+import android.net.Uri;
 import android.os.AsyncTask;
-import android.support.v7.app.ActionBarActivity;
+import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
+import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.AutoCompleteTextView;
 import android.widget.ListView;
 import android.widget.Toast;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.android.gms.common.ConnectionResult;
@@ -31,68 +45,263 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 
 
-public class MainActivity extends ActionBarActivity implements GoogleApiClient.OnConnectionFailedListener {
+public class MainActivity extends FragmentActivity implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
 
     private final static String etaURL = "https://fierce-refuge-4051.herokuapp.com/eta";
     private final static String priceURL = "https://fierce-refuge-4051.herokuapp.com/price";
     protected GoogleApiClient mGoogleApiClient;
-    private  PlaceAutoCompleteAdapter mPlaceAutoCompleteAdaperFrom;
-    private  PlaceAutoCompleteAdapter mPlaceAutoCompleteAdaperTo;
+    private PlaceAutoCompleteAdapter mPlaceAutoCompleteAdaperFrom;
+    private PlaceAutoCompleteAdapter mPlaceAutoCompleteAdaperTo;
 
-    private AutoCompleteTextView mAutoCompleteTextView;
+    private AutoCompleteTextView mAutoCompleteTextViewFrom;
+    private AutoCompleteTextView mAutoCompleteTextViewTo;
 
     private APIResponseAdapter mAPIResponseAdapter;
     private String TAG = "MainActivity";
     private static final LatLngBounds BOUNDS_INDIA = new LatLngBounds(
-            new LatLng(8.0689, 77.5523), new LatLng(33.24902, 76.82704) );
+            new LatLng(8.0689, 77.5523), new LatLng(33.24902, 76.82704));
 
-    private  List<APIResponseData> mAPIResponseDataList  = new ArrayList<APIResponseData>();
-    private  ListView mAPIResponseListView;
+    private List<APIResponseData> mAPIResponseDataList = new ArrayList<APIResponseData>();
+    private ListView mAPIResponseListView;
     private String fromPlaceLat = null;
-    private String  fromPlaceLng = null;
-    private  String toPlaceLat = null;
+    private String fromPlaceLng = null;
+    private String toPlaceLat = null;
     private String toPlaceLng = null;
+    private Location mLastLocation = null;
+    private Geocoder mGeocoder = null;
+
+    private String OLA = "Ola";
+    private String UBER = "Uber";
+    private String TFS = "Tfs";
 
     private enum RESPONSE_TYPE {
         ETA,
         PRICE
     }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         mGoogleApiClient = new GoogleApiClient.Builder(this)
-                .enableAutoManage(this, 0 /* clientId */, this)
+//                .enableAutoManage(this, 0 /* clientId */, this)
                 .addApi(Places.GEO_DATA_API)
                 .addApi(LocationServices.API)
                 .addOnConnectionFailedListener(this)
+                .addConnectionCallbacks(this)
                 .build();
 
-        // Retrieve the AutoCompleteTextView that will display Place suggestions.
-        mAutoCompleteTextView = (AutoCompleteTextView)
+        Drawable imgClearButton  = ContextCompat.getDrawable(this, R.drawable.abc_ic_clear_mtrl_alpha);
+        ColorFilter filter = new LightingColorFilter( Color.BLACK, Color.BLACK);
+        imgClearButton.setColorFilter(filter);
+
+        // Retrieve the AutoCompleteTextView that will display Place suggestions
+        mAutoCompleteTextViewFrom = (AutoCompleteTextView)
                 findViewById(R.id.from_location);
-        mPlaceAutoCompleteAdaperFrom = new PlaceAutoCompleteAdapter(this, android.R.layout.simple_list_item_1,mGoogleApiClient,BOUNDS_INDIA,1,null);
-        mAutoCompleteTextView.setAdapter(mPlaceAutoCompleteAdaperFrom);
-        mAutoCompleteTextView.setOnItemClickListener(mAutocompleteClickListener);
+        mPlaceAutoCompleteAdaperFrom = new PlaceAutoCompleteAdapter(this, android.R.layout.simple_list_item_1, mGoogleApiClient, BOUNDS_INDIA, 1, null);
+        mAutoCompleteTextViewFrom.setAdapter(mPlaceAutoCompleteAdaperFrom);
+        mAutoCompleteTextViewFrom.setOnItemClickListener(mAutocompleteClickListener);
 
-        mAutoCompleteTextView = (AutoCompleteTextView)
+        mAutoCompleteTextViewFrom.setCompoundDrawablesWithIntrinsicBounds(null, null,
+                imgClearButton, null);
+        mAutoCompleteTextViewFrom.setOnTouchListener(mAutoCompleteTextViewTouchListener);
+        mAutoCompleteTextViewTo = (AutoCompleteTextView)
                 findViewById(R.id.to_location);
-        mPlaceAutoCompleteAdaperTo = new PlaceAutoCompleteAdapter(this, android.R.layout.simple_list_item_1,mGoogleApiClient,BOUNDS_INDIA,2,null);
+        mPlaceAutoCompleteAdaperTo = new PlaceAutoCompleteAdapter(this, android.R.layout.simple_list_item_1, mGoogleApiClient, BOUNDS_INDIA, 2, null);
 
-        mAutoCompleteTextView.setAdapter(mPlaceAutoCompleteAdaperTo);
+        mAutoCompleteTextViewTo.setAdapter(mPlaceAutoCompleteAdaperTo);
 
         // Register a listener that receives callbacks when a suggestion has been selected
-        mAutoCompleteTextView.setOnItemClickListener(mAutocompleteClickListener);
+        mAutoCompleteTextViewTo.setOnItemClickListener(mAutocompleteClickListener);
+//        Drawable imgClearButton = getResources().getDrawable(
+//                R.drawable.abc_ic_clear_mtrl_alpha);
 
 
+        mAutoCompleteTextViewTo.setCompoundDrawablesWithIntrinsicBounds(null, null,
+                imgClearButton, null);
+        mAutoCompleteTextViewTo.setOnTouchListener(mAutoCompleteTextViewTouchListener);
         mAPIResponseListView = (ListView) findViewById(R.id.api_response);
-        mAPIResponseAdapter = new APIResponseAdapter(this, R.layout.api_response_item,mAPIResponseDataList);
+        mAPIResponseAdapter = new APIResponseAdapter(this, R.layout.api_response_item, mAPIResponseDataList);
         mAPIResponseListView.setAdapter(mAPIResponseAdapter);
+        mAPIResponseListView.setOnItemClickListener(mAPIResponseListViewClickListener);
 
 
     }
+
+    private AutoCompleteTextView.OnTouchListener mAutoCompleteTextViewTouchListener = new AutoCompleteTextView.OnTouchListener() {
+        @Override
+        public boolean onTouch(View v, MotionEvent event) {
+            AutoCompleteTextView autoCompleteTextView = (AutoCompleteTextView)v;
+
+            Drawable imgClearButton = autoCompleteTextView.getCompoundDrawables()[2];
+            if (autoCompleteTextView.getCompoundDrawables()[2] == null) {
+                return false;
+            }
+            if (event.getAction() != MotionEvent.ACTION_UP) {
+                return false;
+            }
+            if (event.getX() > autoCompleteTextView.getWidth() - autoCompleteTextView.getPaddingRight() - imgClearButton.getIntrinsicWidth()) {
+                autoCompleteTextView.setText("");
+                if(autoCompleteTextView.getId() == mAutoCompleteTextViewFrom.getId()) {
+                    fromPlaceLng = null;
+                    fromPlaceLat = null;
+
+                }
+                else if(autoCompleteTextView.getId() == mAutoCompleteTextViewTo.getId()) {
+                    toPlaceLng = null;
+                    toPlaceLat = null;
+
+                }
+
+                // autoCompleteTextView.setCompoundDrawables(null, null, null, null);
+            }
+            return false;
+        }
+    };
+
+    @Override
+    public void onConnectionSuspended(int arg) {
+
+    }
+
+    @Override
+    public void onConnected(Bundle connectionHint) {
+        mLastLocation = LocationServices.FusedLocationApi.getLastLocation(
+                mGoogleApiClient);
+
+        if (mLastLocation != null) {
+
+
+            List<Address> addresses = null;
+            Address address = null;
+            mGeocoder = new Geocoder(this, Locale.getDefault());
+            double latitude = mLastLocation.getLatitude();
+            double longitude = mLastLocation.getLongitude();
+            fromPlaceLat = Double.toString(latitude);
+            fromPlaceLng = Double.toString(longitude);
+            try {
+                addresses = mGeocoder.getFromLocation(latitude, longitude, 1);
+            } catch (Exception e) {
+                e.printStackTrace();
+                Log.e(TAG, "Canont get current Address!");
+            }
+            // If any additional address line present than only, check with max available address lines by getMaxAddressLineIndex()
+//            String state = addresses.get(0).getAdminArea();
+//            String country = addresses.get(0).getCountryName();
+//            StringBuilder fullAddr = new StringBuilder("");
+            String fullAddr = null;
+            if (addresses != null) {
+                address = addresses.get(0);
+                String primaryAddr = address.getAddressLine(0);
+                String subLocality = address.getSubLocality();
+                String city = address.getLocality();
+                fullAddr = primaryAddr + ", " + subLocality + ", " + city;
+                mAutoCompleteTextViewFrom.setText(fullAddr);
+                Request etaRequest = null;
+                Request priceRequest = null;
+                etaRequest = new Request();
+                etaRequest.setUrl(etaURL);
+                etaRequest.addParams("start_latitude", fromPlaceLat);
+                etaRequest.addParams("start_longitude", fromPlaceLng);
+                new HttpAsyncTask().execute(etaRequest, priceRequest);
+
+//                for (int i = 0; i < address.getMaxAddressLineIndex(); i++) {
+//                    currentAddrStr.append(address.getAddressLine(i)).append(",");
+//                }
+
+            }
+
+
+        }
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        mGoogleApiClient.connect();
+    }
+
+    @Override
+    public void onStop() {
+
+        if (mGoogleApiClient.isConnected()) {
+            mGoogleApiClient.disconnect();
+        }
+        super.onStop();
+
+    }
+
+    public void startNewActivity(Context context, String packageName, String deepLink) {
+
+        PackageManager pm = MainActivity.this.getPackageManager();
+        PackageInfo packageInfo = null;
+        Intent intent = null;
+        try {
+            if(packageName != null) {
+                packageInfo = pm.getPackageInfo(packageName, PackageManager.GET_ACTIVITIES);
+                intent = context.getPackageManager().getLaunchIntentForPackage(packageName);
+            }
+            else if (deepLink != null) {
+
+                intent = new Intent(Intent.ACTION_VIEW);
+                intent.setData(Uri.parse(deepLink));
+            }
+
+            if (intent != null) {
+            /* We found the activity now start the activity */
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(intent);
+            } else if(packageName != null) {
+
+                intent = new Intent(Intent.ACTION_VIEW);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+                intent.setData(Uri.parse("market://details?id=" + packageName));
+                context.startActivity(intent);
+            }
+
+            // Do something awesome - the app is installed! Launch App.
+       } catch (PackageManager.NameNotFoundException e) {
+             /* Bring user to the market or let them choose an app? */
+
+
+        }
+    }
+
+
+
+    private AdapterView.OnItemClickListener mAPIResponseListViewClickListener
+            = new AdapterView.OnItemClickListener() {
+        @Override
+        public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+
+            APIResponseAdapter apiResponseAdapter = (APIResponseAdapter) parent.getAdapter();
+
+            final APIResponseData item = apiResponseAdapter.getItem(position);
+            if (item.getCarProvider() != null && item.getCarProvider().equalsIgnoreCase("uber")) {
+                String deeplink = "uber://";
+                if(fromPlaceLat != null && fromPlaceLng != null) {
+                    deeplink += "?action=setPickup&pickup[latitude]=" + fromPlaceLat + "&pickup[longitude]=" + fromPlaceLng;
+
+
+                    if (toPlaceLng != null && toPlaceLat != null) {
+                        deeplink += "&dropoff[latitude]="+toPlaceLat+"&dropoff[longitude]="+ toPlaceLng;
+                    }
+                }
+                startNewActivity(MainActivity.this, "com.ubercab", deeplink);
+            }
+            else if (item.getCarProvider() != null && item.getCarProvider().equalsIgnoreCase("ola")) {
+                startNewActivity(MainActivity.this, "com.olacabs.customer", null);
+            }
+            else if (item.getCarProvider() != null && item.getCarProvider().equalsIgnoreCase("tfs")) {
+                startNewActivity(MainActivity.this, "com.tfs.consumer", null);
+            }
+
+        }
+    };
 
     /**
      * Listener that handles selections from suggestions from the AutoCompleteTextView that
@@ -124,6 +333,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.O
              Issue a request to the Places Geo Data API to retrieve a Place object with additional
               details about the place.
               */
+
 
             if(locationType == 1) {
                 PendingResult<PlaceBuffer> placeResult = Places.GeoDataApi
@@ -350,7 +560,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.O
             String carCategory = null;
             if(etaResponse.getOla().getDataList().size() != 0) {
                 headerData = new APIResponseData();
-                headerData.setCarProvider("Ola");
+                headerData.setCarProvider(OLA);
                 headerData.setEtaData(null);
                 MainActivity.this.mAPIResponseDataList.add(headerData);
 
@@ -363,6 +573,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.O
                 for (EtaData temp : etaDataList) {
                     apiResponseData = new APIResponseData();
                     apiResponseData.setEtaData(temp);
+                    apiResponseData.setCarProvider(OLA);
                     if(priceDataList != null) {
                     for(PriceData tempPriceData : priceDataList) {
                         if (tempPriceData.getCarCategory().equalsIgnoreCase(temp.getCarCategory())) {
@@ -391,6 +602,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.O
                 for (EtaData temp : etaDataList) {
                     apiResponseData = new APIResponseData();
                     apiResponseData.setEtaData(temp);
+                    apiResponseData.setCarProvider(UBER);
                     if(priceDataList != null) {
                         for(PriceData tempPriceData : priceDataList) {
                             if (tempPriceData.getCarCategory().equalsIgnoreCase(temp.getCarCategory())) {
@@ -420,6 +632,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.O
                 for (EtaData temp : etaDataList) {
                     apiResponseData = new APIResponseData();
                     apiResponseData.setEtaData(temp);
+                    apiResponseData.setCarProvider(TFS);
                     if(priceDataList != null) {
                         for(PriceData tempPriceData : priceDataList) {
                             if (tempPriceData.getCarCategory().equalsIgnoreCase(temp.getCarCategory())) {

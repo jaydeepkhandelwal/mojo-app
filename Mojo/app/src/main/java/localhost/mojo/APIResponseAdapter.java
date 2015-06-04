@@ -37,9 +37,10 @@ public class APIResponseAdapter extends ArrayAdapter<APIResponseData> {
         TextView etaText = (TextView) view.findViewById(R.id.eta);
         TextView estimateText = (TextView) view.findViewById(R.id.estimate);
         TextView carCategoryTypeText = (TextView)view.findViewById(R.id.car_provider);
-        if(APIResponseDataList.get(position).getCarProvider() != null) {
+        APIResponseData apiResponseData = APIResponseDataList.get(position);
+        if(apiResponseData.getEtaData() == null && apiResponseData.getCarProvider() != null) {
 
-            carCategoryTypeText.setText(APIResponseDataList.get(position).getCarProvider());
+            carCategoryTypeText.setText(apiResponseData.getCarProvider());
             carCategoryTypeText.setVisibility(View.VISIBLE);
             etaText.setVisibility(View.GONE);
             estimateText.setVisibility(View.GONE);
@@ -48,10 +49,10 @@ public class APIResponseAdapter extends ArrayAdapter<APIResponseData> {
         else {
 
 
-            EtaData etaData = APIResponseDataList.get(position).getEtaData();
-            PriceData priceData = APIResponseDataList.get(position).getPriceData();
+            EtaData etaData = apiResponseData.getEtaData();
+            PriceData priceData = apiResponseData.getPriceData();
 
-            if(etaData != null) {
+            if (etaData != null) {
                 carCategoryText.setText(etaData.getCarCategory());
 
                 etaText.setText(etaData.getEta() + " mins");
