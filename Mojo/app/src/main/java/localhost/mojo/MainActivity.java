@@ -18,13 +18,20 @@ import android.os.AsyncTask;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
+import android.text.Editable;
+import android.text.TextUtils;
+import android.text.TextWatcher;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.AutoCompleteTextView;
+import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.Toast;
 
@@ -58,7 +65,7 @@ public class MainActivity extends FragmentActivity implements GoogleApiClient.Co
 
     private AutoCompleteTextView mAutoCompleteTextViewFrom;
     private AutoCompleteTextView mAutoCompleteTextViewTo;
-
+    private ImageView mRefreshButton;
     private APIResponseAdapter mAPIResponseAdapter;
     private String TAG = "MainActivity";
     private static final LatLngBounds BOUNDS_INDIA = new LatLngBounds(
@@ -81,6 +88,8 @@ public class MainActivity extends FragmentActivity implements GoogleApiClient.Co
         ETA,
         PRICE
     }
+    AutoCompleteViewTextWatcher mAutoCompleteViewFromTextWatcher = null;
+    AutoCompleteViewTextWatcher mAutoCompleteViewToTextWatcher = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -95,12 +104,13 @@ public class MainActivity extends FragmentActivity implements GoogleApiClient.Co
                 .build();
 
         Drawable imgClearButton  = ContextCompat.getDrawable(this, R.drawable.abc_ic_clear_mtrl_alpha);
-        ColorFilter filter = new LightingColorFilter( Color.BLACK, Color.BLACK);
+        ColorFilter filter = new LightingColorFilter( Color.rgb(0,0,0), Color.rgb(255,165,0));
         imgClearButton.setColorFilter(filter);
 
         // Retrieve the AutoCompleteTextView that will display Place suggestions
         mAutoCompleteTextViewFrom = (AutoCompleteTextView)
                 findViewById(R.id.from_location);
+
         mPlaceAutoCompleteAdaperFrom = new PlaceAutoCompleteAdapter(this, android.R.layout.simple_list_item_1, mGoogleApiClient, BOUNDS_INDIA, 1, null);
         mAutoCompleteTextViewFrom.setAdapter(mPlaceAutoCompleteAdaperFrom);
         mAutoCompleteTextViewFrom.setOnItemClickListener(mAutocompleteClickListener);
@@ -128,9 +138,83 @@ public class MainActivity extends FragmentActivity implements GoogleApiClient.Co
         mAPIResponseListView.setAdapter(mAPIResponseAdapter);
         mAPIResponseListView.setOnItemClickListener(mAPIResponseListViewClickListener);
 
+         mAutoCompleteViewFromTextWatcher = new AutoCompleteViewTextWatcher();
+        mAutoCompleteViewToTextWatcher = new AutoCompleteViewTextWatcher();
+         mAutoCompleteTextViewFrom.addTextChangedListener(mAutoCompleteViewFromTextWatcher);
+        mAutoCompleteTextViewTo.addTextChangedListener(mAutoCompleteViewToTextWatcher);
+        mRefreshButton = (ImageView) findViewById(R.id.refresh_button);
+        mRefreshButton.setOnClickListener(mRefreshButtonClickListener);
+        DisplayMetrics displaymetrics = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getMetrics(displaymetrics);
+        int height = displaymetrics.heightPixels;
+        int width = displaymetrics.widthPixels;
+
+        mRefreshButton.getLayoutParams().height = height/10;
+        mRefreshButton.getLayoutParams().width = height/10;
+
+//        InputMethodManager imm = (InputMethodManager)getSystemService(
+//                Context.INPUT_METHOD_SERVICE);
+//        imm.hideSoftInputFromWindow(mAutoCompleteTextViewTo.getWindowToken(), 0);
+
+
+
+        //mAutoCompleteTextViewFrom.addTextChangedListener(TextWatcher );
 
     }
 
+    class AutoCompleteViewTextWatcher implements TextWatcher {
+        @Override
+        public void onTextChanged(CharSequence s, int start, int before, int count) {
+
+
+                if (this == mAutoCompleteViewFromTextWatcher) {
+                    fromPlaceLat = null;
+                    fromPlaceLng = null;
+                    if(s.toString().equals("")) {
+                        setCurrentLocation(true);
+                    }
+                } else if(this == mAutoCompleteViewToTextWatcher){
+                    toPlaceLat = null;
+                    toPlaceLng = null;
+                }
+
+        }
+
+        @Override
+        public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+        }
+
+        @Override
+        public void afterTextChanged(Editable s) {
+
+        }
+    }
+
+    public void loadETAAndFare(){
+        if(fromPlaceLat != null && fromPlaceLng != null && toPlaceLng != null && toPlaceLat != null) {
+            Request etaRequest = null;
+            Request priceRequest = null;
+            etaRequest = new Request();
+            etaRequest.setUrl(etaURL);
+            etaRequest.addParams("start_latitude", fromPlaceLat);
+            etaRequest.addParams("start_longitude", fromPlaceLng);
+
+            priceRequest = new Request();
+            priceRequest.setUrl(priceURL);
+            priceRequest.addParams("start_latitude", fromPlaceLat);
+            priceRequest.addParams("start_longitude", fromPlaceLng);
+            priceRequest.addParams("end_latitude", toPlaceLat);
+            priceRequest.addParams("end_longitude", toPlaceLng);
+            new HttpAsyncTask().execute(etaRequest, priceRequest);
+        }
+    }
+    private ImageView.OnClickListener mRefreshButtonClickListener = new ImageView.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            loadETAAndFare();
+        }
+    };
     private AutoCompleteTextView.OnTouchListener mAutoCompleteTextViewTouchListener = new AutoCompleteTextView.OnTouchListener() {
         @Override
         public boolean onTouch(View v, MotionEvent event) {
@@ -148,7 +232,7 @@ public class MainActivity extends FragmentActivity implements GoogleApiClient.Co
                 if(autoCompleteTextView.getId() == mAutoCompleteTextViewFrom.getId()) {
                     fromPlaceLng = null;
                     fromPlaceLat = null;
-
+                    setCurrentLocation(true);
                 }
                 else if(autoCompleteTextView.getId() == mAutoCompleteTextViewTo.getId()) {
                     toPlaceLng = null;
@@ -162,13 +246,7 @@ public class MainActivity extends FragmentActivity implements GoogleApiClient.Co
         }
     };
 
-    @Override
-    public void onConnectionSuspended(int arg) {
-
-    }
-
-    @Override
-    public void onConnected(Bundle connectionHint) {
+    public void setCurrentLocation(boolean isHint){
         mLastLocation = LocationServices.FusedLocationApi.getLastLocation(
                 mGoogleApiClient);
 
@@ -192,29 +270,61 @@ public class MainActivity extends FragmentActivity implements GoogleApiClient.Co
 //            String state = addresses.get(0).getAdminArea();
 //            String country = addresses.get(0).getCountryName();
 //            StringBuilder fullAddr = new StringBuilder("");
-            String fullAddr = null;
-            if (addresses != null) {
+
+            String fullAddr = "";
+            if (!isHint && addresses != null) {
                 address = addresses.get(0);
-                String primaryAddr = address.getAddressLine(0);
-                String subLocality = address.getSubLocality();
-                String city = address.getLocality();
-                fullAddr = primaryAddr + ", " + subLocality + ", " + city;
-                mAutoCompleteTextViewFrom.setText(fullAddr);
-                Request etaRequest = null;
-                Request priceRequest = null;
-                etaRequest = new Request();
-                etaRequest.setUrl(etaURL);
-                etaRequest.addParams("start_latitude", fromPlaceLat);
-                etaRequest.addParams("start_longitude", fromPlaceLng);
-                new HttpAsyncTask().execute(etaRequest, priceRequest);
+//                String primaryAddr = address.getAddressLine(0);
+//                String subLocality = address.getSubLocality();
+//                String city = address.getLocality();
+//                fullAddr = primaryAddr + ", " + subLocality + ", " + city;
+//                mAutoCompleteTextViewFrom.setText(fullAddr);
+//                Request etaRequest = null;
+//                Request priceRequest = null;
+//                etaRequest = new Request();
+//                etaRequest.setUrl(etaURL);
+//                etaRequest.addParams("start_latitude", fromPlaceLat);
+//                etaRequest.addParams("start_longitude", fromPlaceLng);
+//                new HttpAsyncTask().execute(etaRequest, priceRequest);
 
-//                for (int i = 0; i < address.getMaxAddressLineIndex(); i++) {
-//                    currentAddrStr.append(address.getAddressLine(i)).append(",");
-//                }
+                for (int i = 0; i < address.getMaxAddressLineIndex(); i++) {
+                    if(address.getAddressLine(i) != null) {
+                        fullAddr += address.getAddressLine(i);
+                    }
+                    if(i !=  address.getMaxAddressLineIndex() - 1) {
+                        fullAddr += ", ";
+                    }
+//                    fullAddr.append(address.getAddressLine(i)).append(",");
+                }
+                if(fullAddr == ""){
+                    fromPlaceLat = null;
+                    fromPlaceLng = null;
+                }
 
+
+                    mAutoCompleteTextViewFrom.setText(fullAddr);
+
+
+            }
+            else if (addresses != null) {
+                mAutoCompleteTextViewFrom.setHint("Current Location");
+               loadETAAndFare();
             }
 
 
+        }
+    }
+    @Override
+    public void onConnectionSuspended(int arg) {
+
+    }
+
+
+    @Override
+    public void onConnected(Bundle connectionHint) {
+        if(mGoogleApiClient.isConnected()) {
+
+            setCurrentLocation(true);
         }
     }
 
@@ -377,11 +487,13 @@ public class MainActivity extends FragmentActivity implements GoogleApiClient.Co
            fromPlaceLng =  Double.toString(place.getLatLng().longitude);
             Request etaRequest = null;
             Request priceRequest = null;
-            etaRequest = new Request();
-            etaRequest.setUrl(etaURL);
-            etaRequest.addParams("start_latitude", fromPlaceLat);
-            etaRequest.addParams("start_longitude", fromPlaceLng);
+
             if(toPlaceLat != null && toPlaceLng != null) {
+                etaRequest = new Request();
+                etaRequest.setUrl(etaURL);
+                etaRequest.addParams("start_latitude", fromPlaceLat);
+                etaRequest.addParams("start_longitude", fromPlaceLng);
+
                 priceRequest = new Request();
                 priceRequest.setUrl(priceURL);
                 priceRequest.addParams("start_latitude", fromPlaceLat);
@@ -389,14 +501,14 @@ public class MainActivity extends FragmentActivity implements GoogleApiClient.Co
                 priceRequest.addParams("end_latitude", toPlaceLat);
                 priceRequest.addParams("end_longitude", toPlaceLng);
 
-
+                new HttpAsyncTask().execute(etaRequest,priceRequest);
 
             }
 
 
 
 
-            new HttpAsyncTask().execute(etaRequest,priceRequest);
+
 
             Log.i(TAG, "Place details received: " + place.getName());
 
@@ -519,8 +631,8 @@ public class MainActivity extends FragmentActivity implements GoogleApiClient.Co
         ProgressDialog dialog;
         @Override
         protected void onPreExecute() {
-            dialog = new ProgressDialog(MainActivity.this,1);
-            dialog.setMessage("Loading....");
+            dialog = new ProgressDialog(MainActivity.this,ProgressDialog.STYLE_SPINNER);
+            dialog.setMessage("Looking nearby cabs....");
             dialog.setIndeterminate(true);
             dialog.setCancelable(false);
             dialog.show();
@@ -529,6 +641,9 @@ public class MainActivity extends FragmentActivity implements GoogleApiClient.Co
         @Override
         protected void onPostExecute(HashMap<RESPONSE_TYPE,String> responseMap) {
             dialog.dismiss();
+            InputMethodManager inputManager = (InputMethodManager) MainActivity.this.getSystemService(Context.INPUT_METHOD_SERVICE);
+            inputManager.hideSoftInputFromWindow(MainActivity.this.getCurrentFocus().getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
+
             String etaResponseStr = responseMap.get(RESPONSE_TYPE.ETA);
             String priceResponseStr = responseMap.get(RESPONSE_TYPE.PRICE);
             ObjectMapper mapper = new ObjectMapper();
@@ -558,6 +673,7 @@ public class MainActivity extends FragmentActivity implements GoogleApiClient.Co
             List<APIResponseData> APIResponseDataList;
             APIResponseData apiResponseData;
             String carCategory = null;
+
             if(etaResponse.getOla().getDataList().size() != 0) {
                 headerData = new APIResponseData();
                 headerData.setCarProvider(OLA);
@@ -648,7 +764,7 @@ public class MainActivity extends FragmentActivity implements GoogleApiClient.Co
                 MainActivity.this.mAPIResponseDataList.addAll(APIResponseDataList);
             }
             mAPIResponseAdapter.notifyDataSetChanged();
-
+            mRefreshButton.setVisibility(View.VISIBLE);
 
         }
 

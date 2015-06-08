@@ -1,3 +1,5 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent">
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
     android:layout_height="match_parent" android:paddingLeft="@dimen/activity_horizontal_margin"
@@ -15,6 +17,9 @@
        android:layout_height="wrap_content"
        android:hint = "Where are you?"
        android:textColor="@android:color/primary_text_light"
+       android:singleLine="true"
+       android:backgroundTint="@android:color/holo_orange_dark"
+
        />
     <AutoCompleteTextView
         android:id="@+id/to_location"
@@ -23,7 +28,12 @@
         android:hint = "Where do you want to be?"
         android:textColor="@android:color/primary_text_light"
         android:paddingTop="20dip"
+        android:singleLine="true"
+        android:backgroundTint="@android:color/holo_orange_dark"
         />
+
+
+
 
     <ListView
         android:id="@+id/api_response"
@@ -31,8 +41,32 @@
         android:layout_height="wrap_content"
         android:paddingTop="30dip"
 
+
+
+
         >
 
     </ListView>
 
+
+
 </LinearLayout>
+
+    <ImageView
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:src="@drawable/refresh"
+        android:id="@+id/refresh_button"
+        android:scaleType="fitXY"
+
+        android:layout_gravity="center"
+
+        android:clickable="true"
+        android:visibility="gone"
+        android:layout_alignParentBottom = "true"
+        android:layout_centerInParent="true"
+
+        />
+
+    </RelativeLayout>
+

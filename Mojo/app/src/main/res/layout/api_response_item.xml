@@ -12,10 +12,9 @@
         android:textStyle="bold"
         android:paddingTop="6dip"
         android:paddingBottom="6dip"
-        android:textSize="16sp"
+        android:textSize="20sp"
         style="@style/Base.TextAppearance.AppCompat.Title"
-
-
+        android:textColor="@color/highlighted_text_material_light"
 
 
         />
@@ -29,6 +28,7 @@
         android:paddingTop="3dip"
         android:paddingBottom="3dip"
         android:gravity="start"
+        android:text=""
 
         />
     <TextView
