@@ -104,7 +104,7 @@ public class MainActivity extends FragmentActivity implements GoogleApiClient.Co
                 .build();
 
         Drawable imgClearButton  = ContextCompat.getDrawable(this, R.drawable.abc_ic_clear_mtrl_alpha);
-        ColorFilter filter = new LightingColorFilter( Color.rgb(0,0,0), Color.rgb(255,165,0));
+        ColorFilter filter = new LightingColorFilter( Color.rgb(0,0,0), Color.rgb(255,255,255));
         imgClearButton.setColorFilter(filter);
 
         // Retrieve the AutoCompleteTextView that will display Place suggestions

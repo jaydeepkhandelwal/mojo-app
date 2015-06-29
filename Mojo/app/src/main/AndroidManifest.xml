@@ -22,15 +22,30 @@
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyDsXQw9N0Q_MXo3Tsul2vgpo8TERw4fkAA"/>
+        <!-- Splash screen -->
         <activity
-            android:name=".MainActivity"
-            android:label="@string/app_name" >
+            android:name=".SplashScreen"
+            android:label="@string/app_name"
+            android:screenOrientation="portrait"
+            android:theme="@android:style/Theme.Black.NoTitleBar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".MainActivity"
+            android:label="@string/app_name" >
+            <!--<intent-filter>-->
+                <!--<action android:name="android.intent.action.MAIN" />-->
+
+                <!--<category android:name="android.intent.category.LAUNCHER" />-->
+            <!--</intent-filter>-->
+        </activity>
     </application>
 
 </manifest>
+
+
