@@ -1,4 +1,5 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent" android:layout_height="match_parent">
 
     <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -26,12 +27,13 @@
        android:hint = "Where are you?"
 
        android:singleLine="true"
-        android:backgroundTint="@color/white"
+        android:backgroundTint="@color/light_green"
         android:paddingBottom="20dp"
        android:paddingTop="20dp"
        android:paddingLeft="20dp"
-       android:textColorHint="@color/white"
+       android:textColorHint="@color/light_gray"
        android:textColor="@color/white"
+       android:imeOptions="actionSearch"
        />
     <AutoCompleteTextView
         android:id="@+id/to_location"
@@ -41,12 +43,12 @@
 
 
         android:singleLine="true"
-        android:textColorHint="@color/white"
+        android:textColorHint="@color/light_gray"
         android:textColor="@color/white"
         android:backgroundTint="@android:color/transparent"
         android:paddingTop="20dp"
         android:paddingLeft="20dp"
-
+        android:imeOptions="actionSearch"
 
 
         />
@@ -54,38 +56,84 @@
 
    </LinearLayout>
 
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    >
+
+        <!--<Button-->
+            <!--android:layout_width="wrap_content"-->
+            <!--android:layout_height="match_parent"-->
+            <!--android:text="Find me Cabs"-->
+            <!--android:layout_gravity="center"-->
+            <!--android:background="@color/light_gray"-->
+
+            <!--/>-->
+        <fragment
+            android:id="@+id/map"
+            android:name="com.google.android.gms.maps.MapFragment"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="3"
+            tools:layout="@layout/select_dialog_item_material"
+
+            />
+
+    <!--<TextView-->
+        <!--android:layout_width="match_parent"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:id="@+id/eta"-->
+        <!--android:text = "Cab is 5 mins away."-->
+        <!--android:gravity="center"-->
+        <!--android:paddingLeft="20dp"-->
+        <!--android:layout_weight="1"-->
+
+        <!--/>-->
+
+        <android.support.v4.widget.SwipeRefreshLayout
+            android:id="@+id/activity_main_swipe_refresh_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="2"
+            android:visibility="gone"
+            android:background="@drawable/border"
+
+            >
 
     <ListView
         android:id="@+id/api_response"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingTop="20dip"
-        android:paddingLeft="10dp"
 
         >
 
     </ListView>
+        </android.support.v4.widget.SwipeRefreshLayout>
 
 
 </LinearLayout>
 
 
-    <ImageView
-        android:layout_width="60dp"
-        android:layout_height="60dp"
-        android:src="@drawable/refresh"
-        android:id="@+id/refresh_button"
-        android:scaleType="fitXY"
+</LinearLayout>
 
-        android:layout_gravity="center"
 
-        android:clickable="true"
-        android:visibility="gone"
-        android:layout_alignParentBottom = "true"
-        android:layout_centerInParent="true"
-        android:layout_marginBottom="20px"
+    <!--<ImageView-->
+        <!--android:layout_width="60dp"-->
+        <!--android:layout_height="60dp"-->
+        <!--android:src="@drawable/refresh"-->
+        <!--android:id="@+id/refresh_button"-->
+        <!--android:scaleType="fitXY"-->
 
-        />
+        <!--android:layout_gravity="center"-->
+
+        <!--android:clickable="true"-->
+        <!--android:visibility="gone"-->
+        <!--android:layout_alignParentBottom = "true"-->
+        <!--android:layout_centerInParent="true"-->
+        <!--android:layout_marginBottom="20px"-->
+
+        <!--/>-->
 
     </RelativeLayout>
 

@@ -1,14 +1,17 @@
 package localhost.mojo;
 
 import android.content.Context;
+import android.support.annotation.DrawableRes;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -18,7 +21,7 @@ public class APIResponseAdapter extends ArrayAdapter<APIResponseData> {
 
     private final List<APIResponseData> APIResponseDataList;
     private final Context context;
-    private int resource =  R.layout.api_response_item;
+    private int resource =  R.layout.api_response_item_new;
     public APIResponseAdapter(Context context, int resource, List<APIResponseData> APIResponseDataList) {
 
         super(context, resource, APIResponseDataList);
@@ -36,39 +39,61 @@ public class APIResponseAdapter extends ArrayAdapter<APIResponseData> {
         TextView carCategoryText = (TextView) view.findViewById(R.id.car_category);
         TextView etaText = (TextView) view.findViewById(R.id.eta);
         TextView estimateText = (TextView) view.findViewById(R.id.estimate);
-        TextView carCategoryTypeText = (TextView)view.findViewById(R.id.car_provider);
+       // TextView carCategoryTypeText = (TextView)view.findViewById(R.id.car_provider);
+        ImageView carCategoryTypeImage = (ImageView) view.findViewById(R.id.car_logo);
         APIResponseData apiResponseData = APIResponseDataList.get(position);
-        if(apiResponseData.getEtaData() == null && apiResponseData.getCarProvider() != null) {
+//        if(apiResponseData.getEtaData() == null && apiResponseData.getCarProvider() != null) {
+//
+//            carCategoryTypeText.setText(apiResponseData.getCarProvider());
+//            carCategoryTypeText.setVisibility(View.VISIBLE);
+//            etaText.setVisibility(View.GONE);
+//            estimateText.setVisibility(View.GONE);
+//            carCategoryText.setVisibility(View.GONE);
+//        }
+//        else {
 
-            carCategoryTypeText.setText(apiResponseData.getCarProvider());
-            carCategoryTypeText.setVisibility(View.VISIBLE);
-            etaText.setVisibility(View.GONE);
-            estimateText.setVisibility(View.GONE);
-            carCategoryText.setVisibility(View.GONE);
-        }
-        else {
-
-
+            if(apiResponseData.getCarProvider() == GlobalVars.OLA){
+                carCategoryTypeImage.setImageResource(R.drawable.ola);
+            }
+            else if(apiResponseData.getCarProvider() == GlobalVars.UBER){
+                 carCategoryTypeImage.setImageResource(R.drawable.uber);
+             }
+            else if(apiResponseData.getCarProvider() == GlobalVars.TFS){
+                carCategoryTypeImage.setImageResource(R.drawable.taxiforsure);
+            }
             EtaData etaData = apiResponseData.getEtaData();
             PriceData priceData = apiResponseData.getPriceData();
 
             if (etaData != null) {
-                carCategoryText.setText(etaData.getCarCategory());
+                HashMap<String,String> cabNamesMapping = CabNamesMapping.getCabNamesMap();
+                String carCategory = etaData.getCarCategory();
 
-                etaText.setText(etaData.getEta() + " mins");
+                if(cabNamesMapping.containsKey(carCategory)){
+                    carCategory = cabNamesMapping.get(carCategory);
+                }
+
+                Integer carEta = etaData.getEta();
+                String mins = "mins";
+                if(carEta == 1)
+                    mins = "min";
+
+               String carAndEtaText = carCategory + " is " + etaData.getEta() + " " + mins + " away.";
+
+                etaText.setText(carAndEtaText);
             }
             if(priceData != null) {
                 String estimate = priceData.getLowEstimate() + " - " + priceData.getHighEstimate();
-                estimateText.setText(estimate + " Rs");
-                estimateText.setVisibility(View.VISIBLE);
+                String estimateStr = "Approx fare should be "+ estimate + " Rs.";
+                estimateText.setText(estimateStr);
+              //  estimateText.setVisibility(View.VISIBLE);
             }
-            else
-                estimateText.setVisibility(View.GONE);
-
-            carCategoryTypeText.setVisibility(View.GONE);
-            etaText.setVisibility(View.VISIBLE);
-            carCategoryText.setVisibility(View.VISIBLE);
-        }
+            else {
+                estimateText.setText("Fare is not available.");
+            }
+           // carCategoryTypeText.setVisibility(View.GONE);
+           // etaText.setVisibility(View.VISIBLE);
+            //carCategoryText.setVisibility(View.VISIBLE);
+       // }
         return view;
     }
 }

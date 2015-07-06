@@ -1,5 +1,6 @@
 package localhost.mojo;
 
+import android.app.Activity;
 import android.content.Context;
 import android.util.Log;
 import android.widget.ArrayAdapter;
@@ -139,6 +140,9 @@ public class PlaceAutoCompleteAdapter extends ArrayAdapter<PlaceAutoCompleteAdap
      * @see Places#GEO_DATA_API#getAutocomplete(CharSequence)
      */
     private ArrayList<PlaceAutocomplete> getAutocomplete(CharSequence constraint) {
+        if(!mGoogleApiClient.isConnected()){
+            mGoogleApiClient.connect();
+        }
         if (mGoogleApiClient.isConnected()) {
             Log.i(TAG, "Starting autocomplete query for: " + constraint);
 
@@ -157,10 +161,16 @@ public class PlaceAutoCompleteAdapter extends ArrayAdapter<PlaceAutoCompleteAdap
             // Confirm that the query completed successfully, otherwise return null
             final Status status = autocompletePredictions.getStatus();
             if (!status.isSuccess()) {
-                Toast.makeText(getContext(), "Error contacting API: " + status.toString(),
-                        Toast.LENGTH_SHORT).show();
+
+//                Toast.makeText(getContext(), "Error contacting API: " + status.toString(),
+//                        Toast.LENGTH_SHORT).show();
                 Log.e(TAG, "Error getting autocomplete prediction API call: " + status.toString());
                 autocompletePredictions.release();
+
+                Context context = this.getContext();
+
+                ((MainActivity)context).showAlertDialog(R.string.connection_alert_title);
+
                 return null;
             }
 

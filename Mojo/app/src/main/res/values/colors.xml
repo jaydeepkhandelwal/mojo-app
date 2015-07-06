@@ -1,10 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="light_green">
-        #b3dd99
-    </color>
-    <color name="white">
-        #FFFFFF
-    </color>
+    <color name="light_green">#b3dd99</color>
+    <color name="white">#FFFFFF</color>
+    <color name="light_gray">#D3D3D3</color>
 
 </resources>

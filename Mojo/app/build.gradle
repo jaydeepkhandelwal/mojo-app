@@ -37,5 +37,10 @@ dependencies {
     compile 'com.fasterxml.jackson.core:jackson-core:2.5.1'
     compile 'com.fasterxml.jackson.core:jackson-databind:2.5.1'
     compile 'com.fasterxml.jackson.core:jackson-annotations:2.5.1'
+    repositories {
+        mavenCentral()
+    }
+    compile 'com.github.chrisbanes.actionbarpulltorefresh:library:+'
+
 }
 
