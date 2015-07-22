@@ -18,6 +18,7 @@ import android.graphics.LightingColorFilter;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.LevelListDrawable;
+import android.graphics.drawable.ScaleDrawable;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
@@ -28,8 +29,11 @@ import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.text.Editable;
+import android.text.Spannable;
+import android.text.SpannableString;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.text.style.ImageSpan;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -38,6 +42,8 @@ import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.view.animation.Animation;
+import android.view.animation.TranslateAnimation;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.AutoCompleteTextView;
@@ -45,6 +51,8 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -119,6 +127,9 @@ public class MainActivity extends FragmentActivity
     LoadProgressDialog mLoadProgressDialog = null;
     LoadProgressDialog mRefreshProgressDialog = null;
     LoadProgressDialog mCurrentProgressDialog = null;
+    ProgressBar mProgressBar = null;
+    TranslateAnimation mAnimation = null;
+    TextView mProgressBarTextView = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -128,9 +139,17 @@ public class MainActivity extends FragmentActivity
 
 
         Drawable imgClearButton  = ContextCompat.getDrawable(this, R.drawable.abc_ic_clear_mtrl_alpha);
-        ColorFilter filter = new LightingColorFilter( Color.rgb(0,0,0), Color.rgb(255,255,255));
+
+        ColorFilter filter = new LightingColorFilter( Color.rgb(0, 0, 0), Color.rgb(255, 255, 255));
         imgClearButton.setColorFilter(filter);
 
+//        SpannableString ss = new SpannableString("test");
+//        Drawable d = ContextCompat.getDrawable(this, R.drawable.abc_ic_clear_mtrl_alpha);
+//        d.setBounds(0, 0, d.getIntrinsicWidth(), d.getIntrinsicHeight());
+//        ImageSpan span = new ImageSpan(d, ImageSpan.ALIGN_BASELINE);
+//        ss.setSpan(span, 0, 3, Spannable.SPAN_INCLUSIVE_EXCLUSIVE);
+//        mAutoCompleteTextViewFrom.setText(ss);
+//
         // Retrieve the AutoCompleteTextView that will display Place suggestions
         mAutoCompleteTextViewFrom = (AutoCompleteTextView)
                 findViewById(R.id.from_location);
@@ -140,6 +159,7 @@ public class MainActivity extends FragmentActivity
         mAutoCompleteTextViewFrom.setOnItemClickListener(mAutocompleteClickListener);
         mAutoCompleteTextViewFrom.setCompoundDrawablesWithIntrinsicBounds(null, null,
                 imgClearButton, null);
+
         mAutoCompleteTextViewFrom.setOnTouchListener(mAutoCompleteTextViewTouchListener);
         mAutoCompleteTextViewFrom.setOnKeyListener(mAutoCompleteTextViewKeyListener);
        // mAutoCompleteTextViewFrom.setImeActionLabel("Get Cabs", KeyEvent.KEYCODE_ENTER);
@@ -204,6 +224,20 @@ public class MainActivity extends FragmentActivity
         mRefreshProgressDialog = new LoadProgressDialog();
         mRefreshProgressDialog.createProgressDialog(this, "Please Wait...", "Refreshing details...");
         googleMap.setOnMyLocationButtonClickListener(onMyLocationButtonClickListener);
+        mProgressBar = (ProgressBar)  findViewById(R.id.progress_bar);
+        mProgressBarTextView = (TextView) findViewById(R.id.progress_bar_text);
+        mSwipeRefreshLayout.setVisibility(View.GONE);
+        mProgressBar.setVisibility(View.GONE);
+        mProgressBarTextView.setVisibility(View.GONE);
+
+//        mAnimation = new TranslateAnimation(Animation.RELATIVE_TO_SELF, 0f,
+//                Animation.RELATIVE_TO_PARENT,0.7f,Animation.RELATIVE_TO_SELF,0,Animation.RELATIVE_TO_SELF,0
+//                );
+//        mAnimation.setDuration(700);
+//
+//        mAnimation.setRepeatCount(Animation.INFINITE);
+//        mAnimation.setRepeatMode(2);
+//        mAnimation.setFillAfter(true);
 
     }
 
@@ -313,9 +347,16 @@ public class MainActivity extends FragmentActivity
 
     public void loadETAAndFare(boolean isSwiped){
         if(fromPlaceLat != null && fromPlaceLng != null && toPlaceLng != null && toPlaceLat != null) {
+            mAPIResponseDataList.clear();
+            mAPIResponseAdapter.notifyDataSetChanged();
+            mSwipeRefreshLayout.setVisibility(View.VISIBLE);
+           // mProgressBar.startAnimation(mAnimation);
+            mProgressBar.setVisibility(View.VISIBLE);
+            mProgressBarTextView.setVisibility(View.VISIBLE);
 
-          //  mSwipeRefreshLayout.setRefreshing(false);
+            //  mSwipeRefreshLayout.setRefreshing(false);
             if(!isSwiped) {
+
                 mCurrentProgressDialog = mLoadProgressDialog;
                //     mLoadProgressDialog.showProgressDialog();
 //                mLoadProgressDialog = new LoadProgressDialog();
@@ -862,7 +903,8 @@ public class MainActivity extends FragmentActivity
 
         @Override
         protected void onPreExecute() {
-            mCurrentProgressDialog.showProgressDialog();
+
+        //    mCurrentProgressDialog.showProgressDialog();
 
         }
 
@@ -876,10 +918,15 @@ public class MainActivity extends FragmentActivity
         @Override
         protected void onPostExecute(HashMap<RESPONSE_TYPE,String> responseMap) {
 
+           // mProgressBar.clearAnimation();
+            mProgressBar.setVisibility(View.GONE);
+            mProgressBarTextView.setVisibility(View.GONE);
+
+
             //  mSwipeRefreshLayout.setRefreshing(false);
-            if (mCurrentProgressDialog != null) {
-                mCurrentProgressDialog.closeProgressDialog();
-            }
+//            if (mCurrentProgressDialog != null) {
+//                mCurrentProgressDialog.closeProgressDialog();
+//            }
             InputMethodManager inputManager = (InputMethodManager) MainActivity.this.getSystemService(Context.INPUT_METHOD_SERVICE);
             inputManager.hideSoftInputFromWindow(MainActivity.this.getCurrentFocus().getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
 
@@ -1048,7 +1095,7 @@ public class MainActivity extends FragmentActivity
 
                     MarkerOptions marker = new MarkerOptions().position(new LatLng(latitude, lonitude)).title(" ");
 //                    Bitmap icon = scaleMarker(R.drawable.car,5);
-                    marker.icon(BitmapDescriptorFactory.fromResource(R.drawable.car));
+                    marker.icon(BitmapDescriptorFactory.fromResource(R.drawable.car_brown));
                     googleMap.addMarker(marker);
 
 

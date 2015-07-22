@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+
+
+<layer-list
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    >
+
+
+    <item
+
+        android:right="30dp"
+        >
+
+
+        <bitmap android:src="@drawable/airport"
+            android:gravity="left"
+
+
+            />
+
+
+    </item>
+
+
+
+    <item>
+      <bitmap android:src="@drawable/abc_ic_clear_mtrl_alpha"
+        android:gravity="right" />
+    </item>
+</layer-list>

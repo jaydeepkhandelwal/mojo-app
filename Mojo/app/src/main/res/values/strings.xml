@@ -11,6 +11,7 @@
     <string name="google_api_alert">Unable to reach our server.</string>
     <string name="no_cab_alert">No cabs at this moment.</string>
     <string name="loading_abort">Could not find the cabs.</string>
+    <string name="loading">Looking for nearby cabs</string>
 
 
 </resources>
